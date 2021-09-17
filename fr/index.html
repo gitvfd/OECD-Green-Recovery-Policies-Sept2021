@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<!--
+	Sources:
+	https://bl.ocks.org/johnwalley/e1d256b81e51da68f7feb632a53c3518
+	https://github.com/johnwalley/d3-simple-slider
+	https://flowingdata.com/projects/2021/minimum-wage/?initialWidth=670&childId=minwage&parentTitle=How%20Much%20Minimum%20Wage%20Changed%20in%20Each%20State%20%7C%20FlowingData&parentUrl=https%3A%2F%2Fflowingdata.com%2F2021%2F03%2F01%2Fhow-much-minimum-wage-changed-in-each-state%2F
+
+-->
+<head>
+<meta charset="utf-8">
+<title>Green recovery Tracker</title>
+<link rel="stylesheet" href="css/site.css" type="text/css" media="screen" />
+<link rel="stylesheet" href="css/bootstrap.min.css.map">
+<link href='https://fonts.googleapis.com/css?family=Inconsolata' rel='stylesheet' type='text/css'>
+</head>
+<div id="main-wrapper">
+	<div id="heading">
+		<img id="quotes" src="img/quotes.png"></img><!-- visibilty hidden in css to keep space -->
+		<div id="title">
+			<h1>Impact environnemental des mesures de relance de l’après-COVID-19, par pays</h1>
+		</div>
+	</div>
+	<!--<div id=intro><b>Explore the environmental implications of announced recovery measures in responses to the COVID-19 crisis! </div>-->
+	<div id="legend">L’incidence des politiques publiques sur l’environnement est illustrée par les couleurs suivantes : <span id="positivelegend" class="dot positive"></span> incidence positive, <span id="negativelegend" class="dot negative"></span> incidence négative, or <span id="mixedlegend" class="dot mixed"></span> ou incidence mitigée.</div>
+	<div id="selCountry">
+			<select id="country_dropdown" onchange="updateCouViz(value)"> 
+				
+			</select> ← CHOISIR UN PAYS POUR EN EXPLORER LES POLITIQUES
+		</div>
+     <div id="selectorButtonsMain" class="flex-container"><!-- visibilty hidden in css to keep space and remove interaction-->
+				<button class="button2 grey" id="launchButton" type="submit" value="agg" onclick="updateAllView(value)"><span class="textbtn">Environmental impacts of policies by sector</span></button>
+				<button class="button2 grey" id="Dimension" type="submit" value="env" onclick="updateAllView(value)"><span class="textbtn">Share of fundings impacting environmental dimensions</span></button>
+			</div>
+    
+    <div id="selectorButtons" class="flex-container">
+				<button class="button grey" id="launchButton" type="submit" value="sector" onclick="updateViz(value)"><span class="textbtn">Afficher par secteur de politique publique </span></button>
+				<button class="button grey" id="Dimension" type="submit" value="type" onclick="updateViz(value)"><span class="textbtn">Afficher par type de politique publique</span></button>
+				<button class="button grey" id="Dimension" type="submit" value="impact" onclick="updateViz(value)"><span class="textbtn">Afficher par impact de politique publique</span></button>
+		</div>
+	<div id="chart"></div>
+	<div id="source"><b>Source</b>: <a href="https://gitvfd.github.io/OECD-Green-Recovery-Policies/data/OECD_ENV_COVID-recovery-database_final-for-web.xlsm" target="_blank">Base de données de l’OCDE sur la relance verte (2021) </a> - Dépenses totales estimées à partir des données de <a href="https://recovery.smithschool.ox.ac.uk/tracking/" target="_blank">l’Observatoire mondial de la relance</a> </div>
+
+	<!--<img id="OECDLogo" src="img/OECD_20cm.jpg"></img>-->
+
+</div>
+<script src="js/d3.v6.min.js"></script>
+
+<script>
+
+var divCircle = d3.select("body").append("div") 
+	.attr("class", "tooltip")       
+	.style("opacity", 0);
+
+//let textAnnot="The database focuses on measures related to COVID-19 economic recovery efforts with clear positive, negative or “mixed” environmental impacts across one or several environmental categories.<br/><b>It contains around 680 national-level measures with environmental relevance</b>, spread over 43 countries and the European Union. Overall, around 80% of measures have a monetary value attached (exceptions mainly relate to regulatory changes).<br/><b>The database covers a range of environmental impacts beyond just energy and climate,</b> and includes pollution (air, plastics), water, biodiversity, and waste management.<br/><b>Explore this chart</b> to understand the environmental impacts of recovery measures by country, and by type of measure, targeted policy sector, and environmental category."
+
+/*var divAnnotation = d3.select("#chart").append("div") 
+	.attr("class", "annotation")       
+	.style("opacity", 0);
+
+divAnnotation.html(textAnnot)
+
+divAnnotation.transition()
+            .duration(250)
+            .style("opacity", 1);*/
+
+// Dimensions of chart.
+
+let margin;
+if(parseInt(d3.select('#chart').style('width'), 10)>800)
+  margin = { top: 30, right: 150, bottom: 30, left: 350 };
+else
+  margin = { top: 30, right: 50, bottom: 30, left: 125 };
+
+let width = parseInt(d3.select('#chart').style('width'), 10) - margin.left - margin.right;
+let height = 630 - margin.top - margin.bottom;
+let minR = 5;
+let marginSlider=30;
+
+	  widthSlider = parseInt(d3.select('#chart').style('width'), 10) - 2*marginSlider;
+if (width < 500) {
+   // margin = { top: 30, right: 100, bottom: 30, left: 200 },
+    //width = parseInt(d3.select('#chart').style('width'), 10) - margin.left - margin.right,
+	minR = 4,
+	height = 630 - margin.top - margin.bottom;
+}
+
+
+//All Data
+let nodes;
+let alldata;
+
+
+
+let simulation;
+
+// Node spacing.
+const padding = 0; // Space between nodes
+
+//Define svg
+let svg = d3.select("#chart").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  //.append("g")
+    //.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+let gCountry = svg.append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    let gAll = svg.append("g")
+    .attr("transform", "translate(" + ((margin.left+margin.right+width)/2) + "," + (margin.top+height/2) + ")");
+
+
+const time_trans = 650;
+
+let x = d3.scalePow().exponent(0.25)
+	.range([0,width-margin.right]);
+
+let y = d3.scaleBand()
+	.range([0,height]);
+
+let area= d3.scaleSqrt() // instead of scaleLinear()
+    .range([minR, 25])
+
+let color = d3.scaleOrdinal()
+	.domain(["Incidence négative","Indéterminée","Incidence positive","Incidence mitigée","null"])
+	.range(["#586D79","#A3A3A3","#27B499","#FF7363","#ffffff"])
+
+let colorAll = d3.scaleOrdinal()
+	.domain(["Incidence négative & mitigée","Incidence négative","Incidence mitigée","Incidence positive","Dépenses  de relance post-COVID-19","Dépenses  de relance post-COVID-19","Energy","Aviation","Ground transport","Maritime transport","Heavy industry","Buildings","Agriculture","Forestry","Waste management","Multiple or other"])//"Positive","Positive Impact","Mixed","Total","Climate Mitigation","Climate Adaptation","Air pollution","Biodiversity","Water","Waste & recycling","Other"])
+	.range(["#d3d3d3","#586D79","#FF7363","#27B499","#d3d3d3","#d3d3d3","#27B499","#27B499","#27B499","#27B499","#27B499","#27B499","#27B499","#27B499","#27B499","#27B499"])
+
+
+
+let amountColor=d3.scaleSqrt()
+	.range(["#FFC2DB","#720017"])
+
+//x-axis
+let  xAxis ;
+var xAxisEl ;
+
+// y-axis
+let  yAxis ;
+var yAxisEl ;
+
+let lowest,highest, circle, couValue, buttonValue;
+
+//load country
+let isoList=[];
+var countISO=0;
+
+
+// Load aggregates
+let aggregates=[];
+const aggregate = d3.json("data/aggregate.json", d3.autoType);
+aggregate.then(function(data){
+    aggregates=data;
+    }); 
+
+
+
+// Load data.
+
+const launch = d3.csv("data/test5.csv", d3.autoType);
+
+
+// Once data is loaded...
+launch.then(function(data){
+    alldata=data
+	  lowest = d3.min(data,function(d){return parseFloat(d.Convert_to_USD_millions)});
+	  highest = d3.max(data,function(d){return parseFloat(d.Convert_to_USD_millions)});
+    x.domain([-0.02*highest,0.1*highest])
+	  area.domain([lowest,0.33*highest])
+    amountColor.domain([lowest,highest])
+
+    const isolist = d3.csv("data/codeIso.csv", d3.autoType);
+    isolist.then(function(data){
+        data.forEach(function(d){
+            isoList.push(d)
+            countISO++;
+            if(countISO==data.length)
+              setDropdown();
+        }); 
+    })
+
+	  initiateCirclePackCountryChart();
+})
+
+function initiateCirclePackCountryChart(){
+
+      buttonValue='sector';
+      buttonEnvValue="agg"
+      couValue='AUS';
+
+      /////////////////////////////////////////
+      /////////// Aggregate charts ////////////
+      /////////////////////////////////////////
+
+
+    let bold = true;
+    let black = true;
+    let shadow = false;
+    let multicolor = true;
+    let hexcolor = "#d3d3d3";
+    
+    const format = d3.format(".0f")
+
+    let diameter ;;
+
+          if(width>=height)
+              diameter=height;
+          else
+              diameter=width;
+    
+  if(parseInt(d3.select('#chart').style('width'), 10)*0.95<height)
+    diameter=parseInt(d3.select('#chart').style('width'), 10)*0.95;
+  //if(diameter <450)
+    //diameter=parseInt(d3.select('#chart').style('width'), 10)*0.95;
+          
+    
+    const pack = data => d3.pack()
+      .size([diameter, diameter])
+      .padding(0)
+      (d3.hierarchy(aggregates)
+      .sum(d => d.value)
+      .sort((a, b) => b.value - a.value))
+
+    
+    
+
+    const root = pack(aggregates);
+
+    let focus = root;
+
+    let view;
+    
+    let fontsize = d3.scaleOrdinal()
+      .domain([1,3])
+      //.range([24,16])
+    
+    if(width<500)
+      fontsize.range([12.5,11])
+    else if(width<800)
+      fontsize.range([13.5,12])
+    else
+    fontsize.range([16.5,13])
+
+    function setColorScheme(multi){
+      if (multi) {
+        let color = d3.scaleOrdinal()
+          .range(d3.schemeCategory10)
+        return color;
+      }
+    }
+    
+    //let color = setColorScheme(multicolor);
+    
+    function setCircleColor(obj) {
+    
+      let depth = obj.depth; 
+
+      while (obj.depth >2) { //previouly 1    
+          obj = obj.parent;
+      }
+          
+      if(obj.parent!=null && obj.parent.data.name=="Incidence positive")
+              obj = obj.parent;
+        
+      
+      let newcolor =  d3.hsl(colorAll(obj.data.name)) ;
+      newcolor.l += depth == 1 ? 0 : depth * .05;
+      return newcolor;
+    }
+
+    
+    
+    function setStrokeColor(obj) {
+      let depth = obj.depth;
+      while (obj.depth > 2) { //previouly 1
+        obj = obj.parent;
+      }
+
+      if(obj.parent!=null && obj.parent.data.name=="Incidence positive")
+              obj = obj.parent;
+        
+      let strokecolor = /**multicolor ?**/ d3.hsl(colorAll(obj.data.name)) /**: d3.hsl(hexcolor)**/;
+      return strokecolor;
+    }
+    
+
+
+    gAll
+        .attr("viewBox", `-${width / 2} -${height / 2} ${width} ${height}`).style("cursor", "pointer")
+        .on("click", () => zoom(root));
+
+    const nodeAll= gAll.append("g")
+      .selectAll("circle")
+      .data(root.descendants()/*.slice(1)*/)
+      .enter().append("circle")
+        .attr("fill", setCircleColor)
+        .attr("stroke", setStrokeColor)
+        .attr("pointer-events", d => !d.children ? "none" : null)
+        .on("mouseover", function(k) { 
+          d3.select(this).attr("stroke", d => d.depth == 1 ? "black" : "white"); 
+
+          divCircle.transition()
+            .duration(250)
+            .style("opacity", 1);
+            var htmlText ;
+            if(k.srcElement.__data__.data.name=="Dépenses totales de relance de l'après-COVID-19")
+              htmlText = "<b>"+k.srcElement.__data__.data.name +"</b";
+            else
+              htmlText = "<b>"+k.srcElement.__data__.data.name + "</b><br/> Montant en milliards de dollars: <i>" + format(k.srcElement.__data__.data.value) + "</i>";
+
+            divCircle.html(htmlText)
+              .style("left", event.pageX - document.body.scrollLeft + "px")
+              .style("top", event.pageY /*- document.body.scrollTop*/ + "px");
+        })
+        .on("mouseout", function() { 
+          d3.select(this).attr("stroke", setStrokeColor); 
+          divCircle.transition()
+            .duration(100)
+            .style("opacity", 0);
+          })
+        .on("click", function(d){ return focus !== d && (zoom(d.srcElement.__data__), event.stopPropagation())});
+
+
+    const labelAll = gAll.append("g")
+        .style("fill", function() {
+          return black ? "#2b2b2b" : "white";
+        })
+        .style("text-shadow", function(){
+          if (shadow) {
+            return black ? "2px 2px 0px white" : "2px 2px 0px #2b2b2b";
+          } else {
+            return "none";
+          }
+        })
+        .attr("pointer-events", "none")
+        .attr("text-anchor", "middle")
+      .selectAll("text")
+      .data(root.descendants())
+      .enter().append("text")
+        .style("fill-opacity", d => d.parent === root ? 1 : 0)
+        .style("display", d => d.parent === root ? "inline" : "none")
+        .style("font", d => fontsize(d.depth) + "px sans-serif")
+        .style("font-weight", function() {
+          return bold ? "bold" : "normal";
+        })
+        .text(function(d){ let label1; if(d.data.value==0) label1="" ; else label1=d.data.name; return label1;}).call(wrap,300)
+      // .text(d => d.data.name );
+      
+    const labelAll2 = gAll.append("g")
+        .style("fill", function() {
+          return black ? "#2b2b2b" : "white";
+        })
+        .style("text-shadow", function(){
+          if (shadow) {
+            return black ? "2px 2px 0px white" : "2px 2px 0px #2b2b2b";
+          } else {
+            return "none";
+          }
+        })
+        .attr("pointer-events", "none")
+        .attr("text-anchor", "middle")
+      .selectAll("text")
+      .data(root.descendants())
+      .enter().append("text")
+        .style("fill-opacity", d => d.parent === root ? 1 : 0)
+        .style("display", d => d.parent === root ? "inline" : "none")
+        .style("font", d => fontsize(d.depth) + "px sans-serif")
+        .style("font-weight", function() {
+          return bold ? "bold" : "normal";
+        })
+        .text(function(d){ let label2;if(d.data.value==0) label2 = "" ;else label2= format(d.data.value) + " bn USD"; return label2;});
+        //.text(d => format(d.data.value) + " bn USD");
+
+    zoomTo([root.x, root.y, root.r * 2]);
+
+    function zoomTo(v) {
+      const k = diameter / v[2];
+
+      view = v;
+
+      labelAll.attr("transform", d => `translate(${(d.x - v[0]) * k},${(d.y - v[1]) * k + fontsize(d.depth)/4})`);
+      labelAll2.attr("transform", d => `translate(${(d.x - v[0]) * k},${(d.y - v[1]+ fontsize(d.depth)/k) * k + fontsize(d.depth)/4})`);
+      nodeAll.attr("transform", d => `translate(${(d.x - v[0]) * k},${(d.y - v[1]) * k})`);
+      nodeAll.attr("r", d => d.r * k);
+      
+    }
+
+    function zoom(d) {
+  /*
+      divAnnotation.transition()
+              .duration(250)
+              .style("opacity", 0);**/
+
+      const focus0 = focus;
+      
+      focus = d;
+
+      const transition = gAll.transition()
+          .duration(event.altKey ? 7500 : 750)
+          .tween("zoom", d => {
+            const i = d3.interpolateZoom(view, [focus.x, focus.y, focus.r * 2]);
+            return t => zoomTo(i(t));
+          });
+
+      labelAll
+        .filter(function(d) { return d.parent === focus || this.style.display === "inline"; })
+        .transition(transition)
+          .style("fill-opacity", d => d.parent === focus ? 1 : 0)
+          .on("start", function(d) { if (d.parent === focus) this.style.display = "inline"; })
+          .on("end", function(d) { if (d.parent !== focus) this.style.display = "none"; });
+
+
+      labelAll2
+        .filter(function(d) { return d.parent === focus || this.style.display === "inline"; })
+        .transition(transition)
+          .style("fill-opacity", d => d.parent === focus ? 1 : 0)
+          .on("start", function(d) { if (d.parent === focus) this.style.display = "inline"; })
+          .on("end", function(d) { if (d.parent !== focus) this.style.display = "none"; });
+    }
+ // } 
+
+
+    /////////////////////////////////////////
+    /////////// country charts //////////////
+    /////////////////////////////////////////
+
+//  function initiateVizTracker(){
+        
+    y.domain([...new Set(alldata.map(d => d.Sector))].sort())
+
+    yAxis = d3.axisLeft(y)
+          .tickSize(-width);
+
+    yAxisEl = gCountry.append("g")
+      .attr("class", "y axis left")
+      //.attr("transform", "translate(0,"+0+")")
+
+    yAxisEl.call(yAxis)
+          .selectAll(".tick text")
+          .call(wrap, 0.65*(margin.left))
+
+    // Create node data.
+      var ref=width/2;
+      nodes = alldata.map(function(d,i) {	
+
+          let r2,x1;
+          if(d.Convert_to_USD_millions!=null)	{
+              r2= area(parseFloat(d.Convert_to_USD_millions));
+              x1=x(parseFloat(d.Convert_to_USD_millions));
+          }
+          else{
+              r2=minR-2;
+              x1=x(-0.015*highest)
+          }
+
+          if(d.Country!=couValue)	
+              r2=0;
+
+          return {
+              id: d.Identification_number,
+              x: x1 ,
+              y: y(d.Sector) ,
+              r: r2,
+              country: d.Country,
+              amount: d.Convert_to_USD_millions,
+              type:d.Type_of_measure,
+              scope: d.Scope,
+              impact: d.Env_impact_category,
+              sector: d.Sector,
+              summary: d.Summary_description,
+              infra: d.Infrastructure_relevant,
+              data: []
+          }
+
+      })
+
+        
+      Promise.all(nodes).then(render);
+
+    //	render()
+    function render(){
+        // Forces
+      simulation = d3.forceSimulation(nodes)
+        //.force("cluster", forceCluster())
+        .force('charge', d3.forceManyBody().strength(0.01))
+        .force("x", d3.forceX(d => d.x))//.strength(strengthX))
+        .force("y", d3.forceY(d => (y(d.sector)+y.bandwidth()/2)))//.strength(strengthY))
+        .force("collision", d3.forceCollide().radius(d => d.r + padding + 0.1))
+        //.alpha(.25)
+        //.alphaDecay(0.001);
+      
+      // Adjust position of circles.
+      simulation.on("tick", () => {    
+        circle
+          .attr("cx", d => d.x)
+          .attr("cy", d => d.y)
+          // .attr("fill", d => d.color);
+      });
+
+      // Circle for each node.
+      circle = gCountry.append("g")
+        .selectAll("circle")
+        .data(nodes)
+        .join("circle")
+        .attr("id", d => "circle"+d.id)
+        .attr("cx", d => d.x)
+        .attr("cy", d => (y(d.sector)+y.bandwidth()/2)) //
+        .attr("fill", function(d) {
+                  //if(d.amount!=null)
+            return color(d.impact)//amountColor(parseFloat(d.amount));
+                  //else    
+                  //return "#aaa";
+        })
+        .attr("stroke", function(d) {
+                  if(d.amount==null)
+            return  "#000";})
+        .attr("stroke-width", function(d) {
+                  if(d.amount==null)
+            return  "2px";})
+              .attr("opacity",0.75);
+      
+      
+      // Ease in the circles.
+      circle.transition()
+        .delay((d,i) => i * 5)
+        .duration(200)
+        .attrTween("r", d => {
+          const i = d3.interpolate(0, d.r);
+          return t => d.r = i(t);
+        });
+
+      circle.on('mouseover', function (d) {
+          d3.select("#circle"+d.srcElement.__data__.id).style("opacity",0.4)
+          divCircle.transition()
+            .duration(250)
+            .style("opacity", 1);
+          
+          var htmlText;
+          if(d.srcElement.__data__.amount !=null)
+            htmlText = "<b>"+d.srcElement.__data__.country+"</b><br/><i> "+ d.srcElement.__data__.type+"</i><br/><br/>Amount: "+ format(d.srcElement.__data__.amount)+" millions of USD<br/>Impact: "+ d.srcElement.__data__.impact+"<br/><br/><b>"+ d.srcElement.__data__.sector +":</b> " + d.srcElement.__data__.summary + "";
+          else
+            htmlText = "<b>"+d.srcElement.__data__.country+"</b><br/><i> "+ d.srcElement.__data__.type+"</i><br/><br/>Impact: "+ d.srcElement.__data__.impact+"<br/><br/><b>"+ d.srcElement.__data__.sector +":</b> " + d.srcElement.__data__.summary + "";
+          
+          divCircle.html(htmlText)
+            .style("left", event.pageX - document.body.scrollLeft + "px")
+            .style("top", event.pageY /*- document.body.scrollTop*/ + "px");
+          })
+        
+        .on("mousemove", function (d) {
+          divCircle
+            .style("left", event.pageX - document.body.scrollLeft + 10 + "px")
+            .style("top", event.pageY + "px");
+
+        })
+        .on('mouseout', function (d) {
+          d3.select("#circle"+d.srcElement.__data__.id).style("opacity",0.75)
+          divCircle.transition()
+            .duration(100)
+            .style("opacity", 0);
+        })
+        updateVizLaunch("sector")
+        //updateViz("impact")
+    }
+
+    gCountry.append("svg:image")
+      .attr('x', function(){
+        if(width<750)
+        return 0.4*width
+        else
+        return 0.9*width
+      })
+      .attr('y', height/2-25)
+      .attr('width', 40)
+      .attr("xlink:href", "img/arrow-right.svg")
+
+    gCountry.append("text")
+      //.attr("x", 0.05*width+30)
+      .attr('y', height/2)
+      .attr("x", function(){
+        if(width<750)
+        return 0.6*width
+        else
+        return 0.95*width
+      })
+      .attr("text-anchor", "start")
+      .style("font-weight",900)
+      .text("Dépenses plus élevées")
+
+
+      
+      gCountry.append("text")
+      .attr("x",x(-0.015*highest)-20)
+      .attr("y",-8)
+      .attr("text-anchor", "start")
+      .style("font-weight",900)
+      .text("Dépenses");
+
+    gCountry.append("text")
+      .attr("x",x(-0.015*highest)-20)
+      .attr("y",5)
+      .style("font-weight",900)
+      .attr("text-anchor", "start")
+      .text("inconnues")
+      //gCountry.attr("opacity",0)
+
+
+      gCountry.attr("display","none")
+  }
+
+/*function updateAllView(value){
+  buttonEnvValue=value;
+ if(value=="agg"){
+   gAll.attr("display","block")
+
+ }
+ else{
+   gAll.attr("display","none")
+ }
+
+}*/
+function updateViz(value){
+
+   /* divAnnotation.transition()
+            .duration(250)
+            .style("opacity", 0);*/
+
+    //update variables
+    buttonValue=value;
+   
+    if(couValue=="all"){
+
+        gCountry.attr("display","none")
+
+      if(buttonEnvValue=="agg"){
+        gAll.attr("display","block")
+      }else{
+
+        gAll.attr("display","none")
+      }
+
+
+        document.getElementById("selectorButtons").style.display = "none";
+        document.getElementById("selectorButtonsMain").style.display = "flex";
+    }else{
+      
+        gCountry.attr("display","block")
+        gAll.attr("display","none")
+
+        document.getElementById("selectorButtons").style.display = "flex";
+        document.getElementById("selectorButtonsMain").style.display = "none";
+    
+
+        var counter=0;
+
+        nodes.forEach(function(o,i) {
+                if (o.country!=couValue)
+              o.r = 0;
+                else{
+                    if(o.amount!=null)	{
+                        o.r= area(parseFloat(o.amount));
+                    } else{
+                        o.r=minR-2;
+                    }
+                }
+
+                  counter++;
+                  if (counter==nodes.length)
+                    update();
+        });
+        
+      function update(){
+
+          // new y domain
+          if(value=="sector"){
+                  y.domain([...new Set(alldata.map(d => d.Sector))].sort())
+                  yAxisEl.transition().ease(d3.easeLinear).duration(time_trans).call(yAxis).selectAll(".tick text").call(wrap, 100);
+                
+                  simulation
+                  .force('charge', d3.forceManyBody().strength(0.01))
+                     // .force("x", d3.forceX(d => d.x))//.strength(strengthX))
+                      .force("y", d3.forceY(d => (y(d.sector)+y.bandwidth()/2)))//.strength(strengthY))
+                      .force("collision", d3.forceCollide().radius(d => d.r + padding + 0.1))
+            .alpha(.25)
+            .alphaDecay(0.001);;
+
+                  circle
+                      .transition()
+                      .duration(time_trans)
+                      .ease(d3.easeLinear)
+                .attr("r", d => d.r);
+
+              } else if(value=="type"){
+                  y.domain([...new Set(alldata.map(d => d.Type_of_measure))].sort())
+                  yAxisEl.transition().ease(d3.easeLinear).duration(time_trans).call(yAxis).selectAll(".tick text").call(wrap, 0.65*(margin.left));
+                
+                  simulation
+                  .force('charge', d3.forceManyBody().strength(0.01))
+              //        .force("x", d3.forceX(d => d.x))//.strength(strengthX))
+                      .force("y", d3.forceY(d => (y(d.type)+y.bandwidth()/2)))//.strength(strengthY))
+                      .force("collision", d3.forceCollide().radius(d => d.r + padding + 0.1))
+            .alpha(.25)
+            .alphaDecay(0.001);;
+
+                  circle
+                      .transition()
+                      .duration(time_trans)
+                      .ease(d3.easeLinear)
+                .attr("r", d => d.r);
+
+              }  else if(value=="impact"){
+                y.domain(["Incidence positive","Incidence mitigée","Incidence négative"])//y.domain([...new Set(alldata.map(d => d.Env_impact_category))].sort())
+
+                yAxisEl.transition().ease(d3.easeLinear).duration(time_trans).call(yAxis).selectAll(".tick text").call(wrap, 0.65*(margin.left));
+                
+                  simulation
+                  .force('charge', d3.forceManyBody().strength(0.01))
+                      //.force("x", d3.forceX(d => d.x))//.strength(strengthX))
+                      .force("y", d3.forceY(d => (y(d.impact)+y.bandwidth()/2)))//.strength(strengthY))
+                      .force("collision", d3.forceCollide().radius(d => d.r + padding + 0.1))
+            .alpha(.25)
+            .alphaDecay(0.001);;
+
+                  circle
+                      .transition()
+                      .duration(time_trans)
+                      .ease(d3.easeLinear)
+                .attr("r", d => d.r);
+              }  
+  
+      }	
+    }	
+}
+
+function updateCouViz(value){
+
+/*divAnnotation.transition()
+            .duration(250)
+            .style("opacity", 0);*/
+
+	//update variables
+     couValue = value;
+
+    if(couValue=="all"){
+
+        gCountry.attr("display","none")
+        
+      if(buttonEnvValue=="agg"){
+        gAll.attr("display","block")
+      }else{
+
+        gAll.attr("display","none")
+      }
+
+        document.getElementById("selectorButtons").style.display = "none";
+        document.getElementById("selectorButtonsMain").style.display = "flex";
+    }else{
+
+
+        gCountry.attr("display","block")
+        gAll.attr("display","none")
+
+       
+        document.getElementById("selectorButtons").style.display = "flex";
+        document.getElementById("selectorButtonsMain").style.display = "none";
+        var counter=0;
+       nodes.forEach(function(o,i) {
+              if (o.country!=couValue)
+            o.r = 0;
+              else{
+                  if(o.amount!=null)	
+                      o.r= area(parseFloat(o.amount));
+                  else
+                      o.r=minR-2;
+              }
+              counter++;
+              if (counter==nodes.length)
+                update();
+      });
+      function update(){
+      
+        // new y domain
+          if(buttonValue=="sector"){
+                  y.domain([...new Set(alldata.map(d => d.Sector))].sort())
+                  yAxisEl.transition().ease(d3.easeLinear).duration(time_trans).call(yAxis).selectAll(".tick text").call(wrap, 0.65*(margin.left));
+                
+                  simulation
+                  .force('charge', d3.forceManyBody().strength(0.01))
+                     // .force("x", d3.forceX(d => d.x))//.strength(strengthX))
+                      .force("y", d3.forceY(d => (y(d.sector)+y.bandwidth()/2)))//.strength(strengthY))
+                      .force("collision", d3.forceCollide().radius(d => d.r + padding + 0.1))
+            .alpha(.25)
+            .alphaDecay(0.001);;
+
+                  circle
+                      .transition()
+                      .duration(time_trans)
+                      .ease(d3.easeLinear)
+                .attr("r", d => d.r);
+
+              } else if(buttonValue=="type"){
+                  y.domain([...new Set(alldata.map(d => d.Type_of_measure))].sort())
+                  yAxisEl.transition().ease(d3.easeLinear).duration(time_trans).call(yAxis).selectAll(".tick text").call(wrap, 0.65*(margin.left));
+                
+                  simulation
+                  .force('charge', d3.forceManyBody().strength(0.01))
+                     // .force("x", d3.forceX(d => d.x))//.strength(strengthX))
+                      .force("y", d3.forceY(d => (y(d.type)+y.bandwidth()/2)))//.strength(strengthY))
+                      .force("collision", d3.forceCollide().radius(d => d.r + padding + 0.1))
+            .alpha(.25)
+            .alphaDecay(0.001);
+
+                  circle
+                      .transition()
+                      .duration(time_trans)
+                      .ease(d3.easeLinear)
+                .attr("r", d => d.r);
+
+              } else if(buttonValue=="scope"){
+                y.domain([...new Set(alldata.map(d => d.Scope))].sort())
+                  yAxisEl.transition().ease(d3.easeLinear).duration(time_trans).call(yAxis).selectAll(".tick text").call(wrap, 0.65*(margin.left));
+                
+                  simulation
+                  .force('charge', d3.forceManyBody().strength(0.01))
+                    //  .force("x", d3.forceX(d => d.x))//.strength(strengthX))
+                      .force("y", d3.forceY(d => (y(d.scope)+y.bandwidth()/2)))//.strength(strengthY))
+                      .force("collision", d3.forceCollide().radius(d => d.r + padding + 0.1))
+            .alpha(.25)
+            .alphaDecay(0.001);;
+
+                  circle
+                      .transition()
+                      .duration(time_trans)
+                      .ease(d3.easeLinear)
+                .attr("r", d => d.r);
+
+              } else if(buttonValue=="impact"){
+                  y.domain(["Incidence positive","Incidence mitigée","Incidence négative"])//y.domain([...new Set(alldata.map(d => d.Env_impact_category))].sort())
+                  yAxisEl.transition().ease(d3.easeLinear).duration(time_trans).call(yAxis).selectAll(".tick text").call(wrap, 0.65*(margin.left));;
+                
+                  simulation
+                  .force('charge', d3.forceManyBody().strength(0.01))
+                    //  .force("x", d3.forceX(d => d.x))//.strength(strengthX))
+                      .force("y", d3.forceY(d => (y(d.impact)+y.bandwidth()/2)))//.strength(strengthY))
+                      .force("collision", d3.forceCollide().radius(d => d.r + padding + 0.1))
+            .alpha(.25)
+            .alphaDecay(0.001);;
+
+                  circle
+                      .transition()
+                      .duration(time_trans)
+                      .ease(d3.easeLinear)
+                .attr("r", d => d.r);
+              }  
+      }
+  }
+}
+
+function wrap(text, width) {
+  text.each(function() {
+
+    var text = d3.select(this),
+        words = text.text().split(/\s+/).reverse(),
+        word,
+        line = [],
+        lineNumber = 0,
+        lineHeight = 1.1, // ems
+        y = text.attr("y"),
+        dy = parseFloat(text.attr("dy")),
+        tspan = text.text(null).append("tspan").attr("x", 0).attr("y", y).attr("dy", dy + "em")
+        console.log(text._groups[0][0])
+    while (word = words.pop()) {
+      line.push(word)
+      tspan.text(line.join(" "))
+      if (tspan.node().getComputedTextLength() > width) {
+        line.pop()
+        tspan.text(line.join(" "))
+        line = [word]
+        tspan = text.append("tspan").attr("x", 0).attr("y", y).attr("dy", `${++lineNumber * lineHeight + dy}em`).text(word)
+      }
+    }
+  })
+}
+
+
+
+function setDropdown(){
+   
+	document.getElementById("country_dropdown").innerHTML = "<option value=\"all\" selected=\"selected\">Tous</option>";
+	[...new Set(alldata.map(d => d.Country))].forEach(function(d){
+        var countryName="";
+        
+        isoList.forEach(function(k){
+            if(k.ISO==d){
+                countryName=k.country;
+                var x = document.getElementById("country_dropdown");
+                
+                var option = document.createElement("option");
+                option.value = d;
+                option.innerHTML = countryName;
+
+                x.appendChild(option);
+            }
+            
+         })
+		
+	
+	})
+}
+
+		d3.selectAll(".dot").on('mouseover', function (d) { 
+        d3.select(this).style("opacity",0.4)
+			
+        divCircle.transition()
+					.duration(250)
+					.style("opacity", 1);
+        
+      var htmlText; 
+      
+
+      if(this.id=="positivelegend")
+        htmlText="The measure has clearly discernible positive environmental impact for one or more environmental dimensions, without any clearly discernible significant negative impacts on other environmental dimensions."
+      if(this.id=="negativelegend")
+        htmlText="The measure has clearly discernible negative impacts on one or more environmental dimensions, without any clear positive environmental impacts."
+      if(this.id=="mixedlegend")
+        htmlText="Both positive and negative environmental impacts are clearly discernible. This can happen either i) where the measure has clear positive environmental benefit on one dimension, but has clearly significantly negative impacts on at least one other dimension;  or ii) where the measure is very broad and contains some elements that will have strong positive implications but other elements that are likely to have clear negative implications (whether for the same environmental dimension or another)"
+
+				divCircle.html(htmlText)
+					.style("left", event.pageX - document.body.scrollLeft + "px")
+					.style("top", event.pageY /*- document.body.scrollTop*/ +30+ "px");
+				})
+			.on('mouseout', function (d) {
+        d3.select(this).style("opacity",1)
+			
+        divCircle.transition()
+					.duration(100)
+					.style("opacity", 0);
+			})
+
+
+d3.selectAll(".button.grey")
+    .on("click", function () {
+        d3.selectAll(".button.grey")
+            .style("background-color", "#e6ebe9").style("color","#0b1e2d")
+        d3.select(this)
+            .style("background-color", "#04629a").style("color", "#e6ebe9")
+    })
+
+d3.selectAll(".button2.grey")
+    .on("click", function () {
+        d3.selectAll(".button2.grey")
+            .style("background-color", "#e6ebe9").style("color","#0b1e2d")
+        d3.select(this)
+            .style("background-color", "#04629a").style("color", "#e6ebe9")
+    })
+
+
+
+
+function updateVizLaunch(value){
+
+   /* divAnnotation.transition()
+            .duration(250)
+            .style("opacity", 0);*/
+
+    //update variables
+    buttonValue=value;
+   
+    
+      
+        gCountry.attr("display","block")
+        gAll.attr("display","none")
+
+        document.getElementById("selectorButtons").style.display = "flex";
+        document.getElementById("selectorButtonsMain").style.display = "none";
+    
+
+        var counter=0;
+
+        nodes.forEach(function(o,i) {
+                if (o.country!=couValue)
+              o.r = 0;
+                else{
+                    if(o.amount!=null)	{
+                        o.r= area(parseFloat(o.amount));
+                    } else{
+                        o.r=minR-2;
+                    }
+                }
+
+                  counter++;
+                  if (counter==nodes.length)
+                    update();
+        });
+        
+      function update(){
+
+          // new y domain
+          if(value=="sector"){
+                  y.domain([...new Set(alldata.map(d => d.Sector))].sort())
+                  yAxisEl.transition().ease(d3.easeLinear).duration(time_trans).call(yAxis).selectAll(".tick text").call(wrap, 100);
+                
+                  simulation
+                  .force('charge', d3.forceManyBody().strength(0.01))
+                     // .force("x", d3.forceX(d => d.x))//.strength(strengthX))
+                      .force("y", d3.forceY(d => (y(d.sector)+y.bandwidth()/2)))//.strength(strengthY))
+                      .force("collision", d3.forceCollide().radius(d => d.r + padding + 0.1))
+            .alpha(.25)
+            .alphaDecay(0.001);;
+
+                  circle
+                      .transition()
+                      .duration(time_trans)
+                      .ease(d3.easeLinear)
+                .attr("r", d => d.r);
+
+              } else if(value=="type"){
+                  y.domain([...new Set(alldata.map(d => d.Type_of_measure))].sort())
+                  yAxisEl.transition().ease(d3.easeLinear).duration(time_trans).call(yAxis).selectAll(".tick text").call(wrap, 0.65*(margin.left));
+                
+                  simulation
+                  .force('charge', d3.forceManyBody().strength(0.01))
+              //        .force("x", d3.forceX(d => d.x))//.strength(strengthX))
+                      .force("y", d3.forceY(d => (y(d.type)+y.bandwidth()/2)))//.strength(strengthY))
+                      .force("collision", d3.forceCollide().radius(d => d.r + padding + 0.1))
+            .alpha(.25)
+            .alphaDecay(0.001);;
+
+                  circle
+                      .transition()
+                      .duration(time_trans)
+                      .ease(d3.easeLinear)
+                .attr("r", d => d.r);
+
+              }  else if(value=="impact"){
+                y.domain(["Incidence positive","Incidence mitigée","Incidence négative"])//y.domain([...new Set(alldata.map(d => d.Env_impact_category))].sort())
+
+                yAxisEl.transition().ease(d3.easeLinear).duration(time_trans).call(yAxis).selectAll(".tick text").call(wrap, 0.65*(margin.left));
+                
+                  simulation
+                  .force('charge', d3.forceManyBody().strength(0.01))
+                      //.force("x", d3.forceX(d => d.x))//.strength(strengthX))
+                      .force("y", d3.forceY(d => (y(d.impact)+y.bandwidth()/2)))//.strength(strengthY))
+                      .force("collision", d3.forceCollide().radius(d => d.r + padding + 0.1))
+            .alpha(.25)
+            .alphaDecay(0.001);;
+
+                  circle
+                      .transition()
+                      .duration(time_trans)
+                      .ease(d3.easeLinear)
+                .attr("r", d => d.r);
+              }  
+  
+      }	
+    updateCouViz("all")
+}
+
+</script>

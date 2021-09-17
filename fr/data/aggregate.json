@@ -1,0 +1,62 @@
+{
+  "name": "Dépenses  de relance post-COVID-19",
+  "value": "3200",
+  "children": [
+    {
+      "name": "Incidence positive",
+      "value": "677",
+
+      "children": [
+        { "name": "Énergie", "value": "184.532" },
+        { "name": "Aviation", "value": "1.4" },
+        { "name": "Transport terrestre", "value": "198.6" },
+        { "name": "Transport maritime", "value": "2.691" },
+        { "name": "Industrie lourde", "value": "29.715" },
+        { "name": "Bâtiment", "value": "61.687" },
+        { "name": "Agriculture", "value": "12.240" },
+        { "name": "Sylviculture", "value": "22.097" },
+        { "name": "Gestion des déchets", "value": "4.174" },
+        { "name": "Autres", "value": "160.301" }
+      ]
+    },
+    {
+      "name": "Incidence négative & mitigée",
+      "value": "320",
+      "children": [
+        {
+          "name": "Incidence négative",
+          "value": "156",
+          "children": [
+            { "name": "Énergie", "value": "37.730" },
+            { "name": "Aviation", "value": "50.944" },
+            { "name": "Transport terrestre", "value": "19.752" },
+            { "name": "Transport maritime", "value": "27" },
+            { "name": "Industrie lourde", "value": "2.617" },
+            { "name": "Bâtiment", "value": "0" },
+            { "name": "Agriculture", "value": "4.196" },
+            { "name": "Sylviculture", "value": "0" },
+            { "name": "Gestion des déchets", "value": "0" },
+            { "name": "Autres", "value": "41.106" }
+          ]
+        },
+        {
+          "name": "Incidence mitigée",
+          "value": "163",
+          "children": [
+            { "name": "Énergie", "value": "19.051" },
+            { "name": "Aviation", "value": "16.572" },
+            { "name": "Transport terrestre", "value": "20.889" },
+            { "name": "Transport maritime", "value": "23" },
+            { "name": "Industrie lourde", "value": "0" },
+            { "name": "Bâtiment", "value": "11.300" },
+            { "name": "Agriculture", "value": "2.538" },
+            { "name": "Sylviculture", "value": "23" },
+            { "name": "Gestion des déchets", "value": "0" },
+            { "name": "Autres", "value": "92.777" }
+          ]
+        }
+      ]
+    },
+    { "name": "Dépenses  de relance post-COVID-19", "value": "3200" }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "name": "Total COVID-19 recovery spending",
+  "value": "3200",
+  "children": [
+    {
+      "name": "Positive impact",
+      "value": "677",
+
+      "children": [
+        { "name": "Energy", "value": "184.532" },
+        { "name": "Aviation", "value": "1.4" },
+        { "name": "Ground transport", "value": "198.6" },
+        { "name": "Maritime transport", "value": "2.691" },
+        { "name": "Heavy industry", "value": "29.715" },
+        { "name": "Buildings", "value": "61.687" },
+        { "name": "Agriculture", "value": "12.240" },
+        { "name": "Forestry", "value": "22.097" },
+        { "name": "Waste management", "value": "4.174" },
+        { "name": "Multiple or other", "value": "160.301" }
+      ]
+    },
+    {
+      "name": "Negative & mixed impact",
+      "value": "320",
+      "children": [
+        {
+          "name": "Negative",
+          "value": "156",
+          "children": [
+            { "name": "Energy", "value": "37.730" },
+            { "name": "Aviation", "value": "50.944" },
+            { "name": "Ground transport", "value": "19.752" },
+            { "name": "Maritime transport", "value": "27" },
+            { "name": "Heavy industry", "value": "2.617" },
+            { "name": "Buildings", "value": "0" },
+            { "name": "Agriculture", "value": "4.196" },
+            { "name": "Forestry", "value": "0" },
+            { "name": "Waste management", "value": "0" },
+            { "name": "Multiple or other", "value": "41.106" }
+          ]
+        },
+        {
+          "name": "Mixed",
+          "value": "163",
+          "children": [
+            { "name": "Energy", "value": "19.051" },
+            { "name": "Aviation", "value": "16.572" },
+            { "name": "Ground transport", "value": "20.889" },
+            { "name": "Maritime transport", "value": "23" },
+            { "name": "Heavy industry", "value": "0" },
+            { "name": "Buildings", "value": "11.300" },
+            { "name": "Agriculture", "value": "2.538" },
+            { "name": "Forestry", "value": "23" },
+            { "name": "Waste management", "value": "0" },
+            { "name": "Multiple or other", "value": "92.777" }
+          ]
+        }
+      ]
+    },
+    { "name": "Total COVID-19 recovery spending", "value": "3200" }
+  ]
+}
